@@ -12,7 +12,7 @@ from __future__ import annotations
 import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone, tzinfo
+from datetime import datetime, timedelta, timezone, tzinfo
 
 SAMPLE_COUNTER_KEY = (0, 20004)
 CSV_PATH = "/x.csv"
@@ -65,26 +65,60 @@ def parse_csv(text: str) -> list[Row]:
 
 
 class Localizer:
-    """Converts naive device time to UTC, resolving the repeated DST hour.
+    """Converts the device's naive local time to UTC.
 
-    Samples must be fed in logging order. When the local clock jumps back
-    (autumn DST change) the second pass through the hour gets ``fold=1``.
+    The device does not switch between summer and winter time exactly when the
+    zone rules say so (observed: the clock was set back at 03:58 instead of
+    03:00, so 02:58..03:58 appears twice with different offsets). Resolving the
+    time purely by zone rules would therefore shift or drop about an hour of
+    samples around every change.
+
+    Strategy: away from a rule transition (no change within +-3 h) the offset
+    is taken from the zone rules. Near a transition the offset is tracked from
+    the sample sequence instead: a backward jump of about whole hours is a
+    clock correction, a forward jump of about one hour is one only if the rules
+    say the offset increases (otherwise it is a gap in the log). Samples must
+    be fed in logging order.
     """
+
+    _STABLE_SPAN = timedelta(hours=3)
+    _SAMPLE = timedelta(minutes=1)
+    _HOUR = timedelta(hours=1)
+    _TOLERANCE = timedelta(minutes=10)
 
     def __init__(self, tz: tzinfo) -> None:
         self._tz = tz
-        self._previous: datetime | None = None
+        self._offset: timedelta | None = None  # UTC offset of the device clock
+        self._prev_naive: datetime | None = None
+        self._prev_utc: datetime | None = None
+
+    def _rule(self, naive: datetime) -> timedelta:
+        offset = naive.replace(tzinfo=self._tz).utcoffset()
+        return offset if offset is not None else timedelta(0)
 
     def to_utc(self, naive: datetime) -> datetime | None:
         """Return the UTC time, or None if it would go back in time."""
-        utc = naive.replace(tzinfo=self._tz).astimezone(timezone.utc)
-        prev = self._previous
-        if prev is not None and utc < prev:
-            folded = naive.replace(tzinfo=self._tz, fold=1).astimezone(timezone.utc)
-            if folded < prev:
-                return None
-            utc = folded
-        self._previous = utc
+        before = self._rule(naive - self._STABLE_SPAN)
+        after = self._rule(naive + self._STABLE_SPAN)
+        offset = self._offset
+        if before == after or offset is None or self._prev_naive is None:
+            offset = self._rule(naive)
+        else:
+            jump = naive - self._prev_naive - self._SAMPLE
+            whole = round(jump / self._HOUR) * self._HOUR
+            if (
+                whole
+                and abs(jump - whole) <= self._TOLERANCE
+                and (whole < timedelta(0) or after > before)
+            ):
+                offset += whole
+
+        utc = (naive - offset).replace(tzinfo=timezone.utc)
+        if self._prev_utc is not None and utc < self._prev_utc:
+            return None
+        self._offset = offset
+        self._prev_naive = naive
+        self._prev_utc = utc
         return utc
 
 

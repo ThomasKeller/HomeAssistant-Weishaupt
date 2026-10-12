@@ -98,6 +98,62 @@ def test_localizer_resolves_repeated_dst_hour():
     assert first < second < third
 
 
+def _minutes(start, count, seconds=0):
+    return [start + timedelta(minutes=i, seconds=seconds) for i in range(count)]
+
+
+def test_localizer_device_switches_late_real_sequence():
+    """Real log 26.10.2025: clock set back at 03:58 instead of 03:00."""
+    tz = _berlin()
+    first_pass = _minutes(datetime(2025, 10, 26, 2, 30, 1), 89)  # 02:30 .. 03:58
+    second_pass = _minutes(datetime(2025, 10, 26, 2, 58, 1), 80)  # 02:58 .. 04:17
+    loc = history.Localizer(tz)
+    out = [loc.to_utc(n) for n in first_pass + second_pass]
+    assert None not in out  # nothing dropped
+    assert out[0] == datetime(2025, 10, 26, 0, 30, 1, tzinfo=UTC)
+    # 03:00 (first pass) is still summer time -> 01:00 UTC
+    assert out[first_pass.index(datetime(2025, 10, 26, 3, 0, 1))] == datetime(2025, 10, 26, 1, 0, 1, tzinfo=UTC)
+    # strictly continuous minutes (the instant at the clock correction repeats once)
+    steps = [b - a for a, b in zip(out, out[1:])]
+    assert steps.count(timedelta(0)) == 1
+    assert all(s in (timedelta(0), timedelta(minutes=1)) for s in steps)
+    # 04:00 local after the change is winter time -> 03:00 UTC
+    assert out[-1] == datetime(2025, 10, 26, 3, 17, 1, tzinfo=UTC)
+
+
+def test_localizer_device_switches_on_time():
+    tz = _berlin()
+    first_pass = _minutes(datetime(2025, 10, 26, 2, 50, 0), 10)  # 02:50 .. 02:59
+    second_pass = _minutes(datetime(2025, 10, 26, 2, 0, 0), 70)  # 02:00 .. 03:09
+    loc = history.Localizer(tz)
+    out = [loc.to_utc(n) for n in first_pass + second_pass]
+    assert None not in out
+    assert out[0] == datetime(2025, 10, 26, 0, 50, 0, tzinfo=UTC)
+    assert out[10] == datetime(2025, 10, 26, 1, 0, 0, tzinfo=UTC)
+    assert all(b - a == timedelta(minutes=1) for a, b in zip(out, out[1:]))
+
+
+def test_localizer_gap_of_one_hour_is_not_a_clock_change():
+    tz = _berlin()
+    loc = history.Localizer(tz)
+    a = loc.to_utc(datetime(2025, 10, 26, 1, 30, 0))  # device off, then 1 h later
+    b = loc.to_utc(datetime(2025, 10, 26, 2, 30, 0))
+    assert b - a == timedelta(hours=1)
+
+
+def test_localizer_spring_forward_with_late_switch():
+    tz = _berlin()
+    # 29.03.2026: rules switch 02:00 -> 03:00. Assume the device does it at 03:10.
+    before = _minutes(datetime(2026, 3, 29, 1, 40, 0), 90)  # 01:40 .. 03:09
+    after = _minutes(datetime(2026, 3, 29, 4, 11, 0), 30)  # 04:11 ...
+    loc = history.Localizer(tz)
+    out = [loc.to_utc(n) for n in before + after]
+    assert None not in out
+    # continuous in real time: 90 samples then one more minute, no 1 h hole
+    steps = [b - a for a, b in zip(out, out[1:])]
+    assert max(steps) <= timedelta(minutes=2)
+
+
 def test_localizer_rejects_time_going_back():
     loc = history.Localizer(UTC)
     assert loc.to_utc(datetime(2026, 1, 1, 12, 0)) is not None

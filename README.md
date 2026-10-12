@@ -101,8 +101,10 @@ Ablauf und Schutzmaßnahmen:
     (prüft die Kanalzuordnung des Loggers).
 - Importiert wird nur **vor** der Stunde, in der der Konfigurationseintrag angelegt wurde.
   Bereits von Home Assistant aufgezeichnete Statistiken werden so nicht überschrieben.
-- Die Umstellung von Sommer-/Winterzeit wird berücksichtigt (die doppelte Stunde im Herbst
-  wird anhand der Reihenfolge der Samples aufgelöst).
+- Die Umstellung von Sommer-/Winterzeit wird berücksichtigt. Das Gerät stellt seine Uhr nicht
+  exakt zum regulären Zeitpunkt um (beobachtet: im Herbst um 03:58 statt 03:00). Deshalb wird
+  der Versatz in der Nähe einer Umstellung aus der Sample-Folge verfolgt statt nur aus den
+  Zeitzonenregeln berechnet.
 - Der Import lässt sich wiederholen; gleiche Stunden werden dabei überschrieben.
 - Betriebsphase, Flamme und Gasventile sind **nicht** im Logger und werden nicht importiert.
   Möchte man die Betriebsphase mitloggen, muss am Gerät unter *Wärmeerzeuger → Prozesswerte*
