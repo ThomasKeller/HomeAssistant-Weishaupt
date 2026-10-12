@@ -1,0 +1,104 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Weishaupt Heizung",
+        "data": {
+          "host": "IP-Adresse / Hostname",
+          "scan_interval": "Abfrageintervall (Sekunden)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung zum Gerät fehlgeschlagen"
+    },
+    "abort": {
+      "already_configured": "Gerät ist bereits konfiguriert"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "scan_interval": "Abfrageintervall (Sekunden)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "problem": {
+        "name": "Störung"
+      },
+      "flame": {
+        "name": "Flamme"
+      },
+      "gas_valve_1": {
+        "name": "Gasventil 1"
+      },
+      "gas_valve_2": {
+        "name": "Gasventil 2"
+      }
+    },
+    "sensor": {
+      "outside_temperature": {
+        "name": "Außentemperatur"
+      },
+      "damped_outside_temperature": {
+        "name": "Gedämpfte Außentemperatur"
+      },
+      "flow_temperature": {
+        "name": "Vorlauftemperatur"
+      },
+      "exhaust_temperature": {
+        "name": "Abgastemperatur"
+      },
+      "hot_water_temperature": {
+        "name": "Warmwassertemperatur"
+      },
+      "heat_demand": {
+        "name": "Wärmeanforderung"
+      },
+      "load_state": {
+        "name": "Laststellung"
+      },
+      "operating_phase": {
+        "name": "Betriebsphase"
+      },
+      "error": {
+        "name": "Fehlercode"
+      },
+      "burner_cycles": {
+        "name": "Schaltspiele Brenner"
+      },
+      "burner_operating_hours": {
+        "name": "Betriebsstunden Brenner"
+      },
+      "time_since_service": {
+        "name": "Zeit seit letzter Wartung"
+      },
+      "room_temperature": {
+        "name": "Raumtemperatur"
+      },
+      "room_setpoint": {
+        "name": "Soll-Raumtemperatur"
+      }
+    }
+  },
+  "services": {
+    "import_history": {
+      "name": "Historie importieren",
+      "description": "Importiert die Daten des geräteeigenen Loggers (1-Minuten-Takt) einmalig als stündliche Langzeitstatistik für die vorhandenen Sensoren. Läuft im Hintergrund und dauert bei 12 Monaten etwa eine Stunde.",
+      "fields": {
+        "months": {
+          "name": "Monate",
+          "description": "Wie viele Monate rückwirkend importiert werden (Standard 12)."
+        },
+        "config_entry_id": {
+          "name": "Konfigurationseintrag",
+          "description": "Nur nötig, wenn mehrere Weishaupt-Einträge existieren."
+        }
+      }
+    }
+  }
+}

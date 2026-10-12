@@ -1,0 +1,17 @@
+{
+  "domain": "weishaupt",
+  "name": "Weishaupt Heizung",
+  "codeowners": [
+    "@ThomasKeller"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "recorder"
+  ],
+  "documentation": "https://github.com/ThomasKeller/HomeAssistant-Weishaupt",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/ThomasKeller/HomeAssistant-Weishaupt/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

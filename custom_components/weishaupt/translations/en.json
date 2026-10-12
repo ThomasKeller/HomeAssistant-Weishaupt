@@ -1,0 +1,104 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Weishaupt heating",
+        "data": {
+          "host": "IP address / hostname",
+          "scan_interval": "Polling interval (seconds)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the device"
+    },
+    "abort": {
+      "already_configured": "Device is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "scan_interval": "Polling interval (seconds)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "problem": {
+        "name": "Problem"
+      },
+      "flame": {
+        "name": "Flame"
+      },
+      "gas_valve_1": {
+        "name": "Gas valve 1"
+      },
+      "gas_valve_2": {
+        "name": "Gas valve 2"
+      }
+    },
+    "sensor": {
+      "outside_temperature": {
+        "name": "Outside temperature"
+      },
+      "damped_outside_temperature": {
+        "name": "Damped outside temperature"
+      },
+      "flow_temperature": {
+        "name": "Flow temperature"
+      },
+      "exhaust_temperature": {
+        "name": "Exhaust temperature"
+      },
+      "hot_water_temperature": {
+        "name": "Hot water temperature"
+      },
+      "heat_demand": {
+        "name": "Heat demand"
+      },
+      "load_state": {
+        "name": "Load state"
+      },
+      "operating_phase": {
+        "name": "Operating phase"
+      },
+      "error": {
+        "name": "Error code"
+      },
+      "burner_cycles": {
+        "name": "Burner cycles"
+      },
+      "burner_operating_hours": {
+        "name": "Burner operating hours"
+      },
+      "time_since_service": {
+        "name": "Time since last service"
+      },
+      "room_temperature": {
+        "name": "Room temperature"
+      },
+      "room_setpoint": {
+        "name": "Room setpoint"
+      }
+    }
+  },
+  "services": {
+    "import_history": {
+      "name": "Import history",
+      "description": "One-off import of the device's own data logger (1 minute samples) as hourly long-term statistics for the existing sensors. Runs in the background and takes about an hour for 12 months.",
+      "fields": {
+        "months": {
+          "name": "Months",
+          "description": "How many months to import backwards (default 12)."
+        },
+        "config_entry_id": {
+          "name": "Config entry",
+          "description": "Only needed when several Weishaupt entries exist."
+        }
+      }
+    }
+  }
+}

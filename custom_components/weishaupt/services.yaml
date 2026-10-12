@@ -1,0 +1,15 @@
+import_history:
+  fields:
+    months:
+      required: false
+      default: 12
+      selector:
+        number:
+          min: 1
+          max: 36
+          mode: box
+    config_entry_id:
+      required: false
+      selector:
+        config_entry:
+          integration: weishaupt
