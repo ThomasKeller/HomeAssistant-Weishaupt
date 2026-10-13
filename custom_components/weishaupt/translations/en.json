@@ -97,6 +97,10 @@
         "config_entry_id": {
           "name": "Config entry",
           "description": "Only needed when several Weishaupt entries exist."
+        },
+        "source": {
+          "name": "Source",
+          "description": "Optional: address (host:port) of a local server serving a downloaded logger file (tools/serve_log.py) instead of the device."
         }
       }
     }

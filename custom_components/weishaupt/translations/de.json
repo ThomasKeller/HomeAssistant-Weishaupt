@@ -97,6 +97,10 @@
         "config_entry_id": {
           "name": "Konfigurationseintrag",
           "description": "Nur nötig, wenn mehrere Weishaupt-Einträge existieren."
+        },
+        "source": {
+          "name": "Quelle",
+          "description": "Optional: Adresse (host:port) eines lokalen Servers mit einer heruntergeladenen Logger-Datei (tools/serve_log.py) statt des Geräts."
         }
       }
     }

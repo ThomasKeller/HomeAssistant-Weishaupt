@@ -89,6 +89,35 @@ data:
   months: 12   # 1..36, Standard 12
 ```
 
+### Verlauf vorher herunterladen (schonend, empfohlen für große Zeiträume)
+
+Das Gerät liefert nur etwa 150 bis 300 Samples/s. Ein Import aus dem Gerät belastet es daher
+stundenlang. Alternativ lässt sich der Verlauf einmalig auf einen Rechner herunterladen und von
+dort importieren (nur Python 3 nötig, keine weiteren Pakete):
+
+```bash
+# 1. herunterladen (abbrechbar, bei erneutem Start wird fortgesetzt)
+python tools/download_log.py --host 192.168.1.50 --out weishaupt_log.csv
+
+# 2. die Datei wie ein Gerät bereitstellen (Port in der Firewall freigeben)
+python tools/serve_log.py --file weishaupt_log.csv --port 8765
+```
+
+```yaml
+# 3. in Home Assistant importieren, source = Rechner mit serve_log.py
+service: weishaupt.import_history
+data:
+  months: 36
+  source: 192.168.1.20:8765
+```
+
+- Der Download liest in Blöcken zu 1000 Samples mit 2 s Pause, wiederholt bei „busy“ mit
+  Wartezeit und bricht nach mehreren Fehlern in Folge ab (erneut starten setzt fort).
+- Vor dem Import den Download noch einmal kurz laufen lassen, damit die Datei die aktuellen
+  Samples enthält (die Vorprüfung vergleicht den letzten Zeitstempel mit der aktuellen Zeit).
+- Mit `source` entfällt die Pause zwischen den Blöcken, der Import läuft in wenigen Minuten.
+- Der Verlauf des Geräts beginnt bei Sample 0, in einem Test am 20.11.2023.
+
 Ablauf und Schutzmaßnahmen:
 
 - Läuft im Hintergrund. Das Gerät liefert etwa 150 Samples/s, 12 Monate dauern grob eine Stunde

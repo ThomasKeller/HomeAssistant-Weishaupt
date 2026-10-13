@@ -13,3 +13,7 @@ import_history:
       selector:
         config_entry:
           integration: weishaupt
+    source:
+      required: false
+      selector:
+        text:

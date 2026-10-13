@@ -40,9 +40,11 @@ _LOGGER = logging.getLogger(__name__)
 SERVICE_IMPORT_HISTORY = "import_history"
 ATTR_MONTHS = "months"
 ATTR_ENTRY = "config_entry_id"
+ATTR_SOURCE = "source"
 
 BLOCK_SIZE = 1000  # samples per CSV request (about 7 s on the device)
-BLOCK_PAUSE = 2  # seconds between CSV requests
+BLOCK_PAUSE = 2  # seconds between CSV requests to the device
+LOCAL_BLOCK_PAUSE = 0.1  # seconds between CSV requests to a local copy (source)
 CSV_TIMEOUT = 90  # seconds
 FLUSH_HOURS = 24 * 7
 MAX_CLOCK_DEVIATION = timedelta(minutes=15)
@@ -59,6 +61,7 @@ IMPORT_SCHEMA = vol.Schema(
             vol.Coerce(int), vol.Range(min=1, max=36)
         ),
         vol.Optional(ATTR_ENTRY): cv.string,
+        vol.Optional(ATTR_SOURCE): cv.string,
     }
 )
 
@@ -71,6 +74,7 @@ class _Plan:
     until: datetime  # UTC, on the hour; hours at or after this are not imported
     start: datetime  # UTC
     targets: dict[int, tuple[str, str | None]]  # column -> (entity_id, unit)
+    pause: float = BLOCK_PAUSE  # seconds between CSV requests
 
 
 # ------------------------------------------------------------------ device access
@@ -197,8 +201,21 @@ def _resolve_targets(hass: HomeAssistant, entry) -> dict[int, tuple[str, str | N
     return targets
 
 
-async def _preflight(hass: HomeAssistant, entry, months: int) -> _Plan:
-    host: str = entry.data[CONF_HOST]
+def _clean_source(source: str | None) -> str | None:
+    """Normalise 'http://host:port/' to 'host:port'."""
+    if not source:
+        return None
+    cleaned = source.strip()
+    for prefix in ("http://", "https://"):
+        if cleaned.lower().startswith(prefix):
+            cleaned = cleaned[len(prefix) :]
+    return cleaned.rstrip("/") or None
+
+
+async def _preflight(
+    hass: HomeAssistant, entry, months: int, source: str | None = None
+) -> _Plan:
+    host: str = source or entry.data[CONF_HOST]
     tz = dt_util.get_time_zone(hass.config.time_zone) or dt_util.DEFAULT_TIME_ZONE
     try:
         count = await _retry(lambda: _read_count(hass, host))
@@ -241,7 +258,15 @@ async def _preflight(hass: HomeAssistant, entry, months: int) -> _Plan:
     created = getattr(entry, "created_at", None) or now
     until = HourlyAggregator.hour_of(min(now, created))
     start = until - timedelta(days=round(months * DAYS_PER_MONTH))
-    return _Plan(host, count, tz, until, start, _resolve_targets(hass, entry))
+    return _Plan(
+        host,
+        count,
+        tz,
+        until,
+        start,
+        _resolve_targets(hass, entry),
+        pause=LOCAL_BLOCK_PAUSE if source else BLOCK_PAUSE,
+    )
 
 
 async def _import(hass: HomeAssistant, plan: _Plan) -> tuple[int, int]:
@@ -310,7 +335,7 @@ async def _import(hass: HomeAssistant, plan: _Plan) -> tuple[int, int]:
         flush()
         if blocks % 25 == 0:
             _LOGGER.info("Weishaupt history import: sample %d of %d", index, plan.count)
-        await asyncio.sleep(BLOCK_PAUSE)
+        await asyncio.sleep(plan.pause)
 
     if reached_until:
         collect(aggregator.flush())
@@ -351,9 +376,10 @@ async def _handle_import(hass: HomeAssistant, call: ServiceCall) -> None:
     if domain_data.get(_RUNNING):
         raise ServiceValidationError("A history import is already running.")
     entry = _resolve_entry(hass, call.data.get(ATTR_ENTRY))
+    source = _clean_source(call.data.get(ATTR_SOURCE))
     domain_data[_RUNNING] = True
     try:
-        plan = await _preflight(hass, entry, call.data[ATTR_MONTHS])
+        plan = await _preflight(hass, entry, call.data[ATTR_MONTHS], source)
     except BaseException:
         domain_data.pop(_RUNNING, None)
         raise
@@ -361,9 +387,10 @@ async def _handle_import(hass: HomeAssistant, call: ServiceCall) -> None:
         hass, _run_import(hass, plan), name="weishaupt_import_history"
     )
     _LOGGER.info(
-        "Weishaupt history import started: %d months, up to %s",
+        "Weishaupt history import started: %d months, up to %s, source %s",
         call.data[ATTR_MONTHS],
         plan.until,
+        plan.host,
     )
 
 
