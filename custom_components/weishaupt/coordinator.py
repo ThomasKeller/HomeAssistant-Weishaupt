@@ -25,7 +25,7 @@ from .const import (
     RETRIES,
     RETRY_DELAY,
 )
-from .protocol import Key, ProtocolError, build_request, parse_response
+from .protocol import Key, ProtocolError, build_request, parse_response, scale
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -104,7 +104,7 @@ class WeishauptCoordinator(DataUpdateCoordinator[dict[str, float | None]]):
             key = (p.module, p.index)
             if key in raw:
                 value = raw[key]
-                data[p.key] = None if value is None else round(value * p.factor, 3)
+                data[p.key] = None if value is None else scale(value, p.factor)
             else:
                 # row missing: keep the previous value, unknown if never seen
                 data.setdefault(p.key, None)

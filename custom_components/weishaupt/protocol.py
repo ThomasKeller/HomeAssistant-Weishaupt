@@ -34,6 +34,17 @@ def build_request(keys: Iterable[Key]) -> dict[str, Any]:
     }
 
 
+def scale(raw: int, factor: float) -> float | int:
+    """Scale a raw value; parameters with factor 1 stay whole numbers.
+
+    Whole numbers matter for codes (operating phase, error code) and
+    percentages: a float would be shown as "0.0" instead of "0".
+    """
+    if factor == 1:
+        return raw
+    return round(raw * factor, 3)
+
+
 def decode_value(row: list[int]) -> tuple[Key, int | None]:
     """Decode one telegram row to ((module, info), raw signed value).
 

@@ -95,3 +95,16 @@ def test_only_foreign_rows_raise():
 def test_junk_rows_are_skipped():
     text = body(row(12, 90, 0), "garbage", [1, 2, 3])
     assert protocol.parse_response(text, [(10, 12)]) == {(10, 12): 90}
+
+
+def test_scale_keeps_whole_numbers_for_factor_one():
+    value = protocol.scale(0, 1.0)  # const.py uses 1.0 as default factor
+    assert value == 0 and isinstance(value, int)
+    assert str(protocol.scale(373, 1.0)) == "373"
+
+
+def test_scale_applies_factors():
+    assert protocol.scale(90, 0.1) == 9.0
+    assert protocol.scale(97, 0.1) == 9.7
+    assert protocol.scale(207, 1000) == 207000
+    assert protocol.scale(-25, 0.1) == -2.5
