@@ -43,10 +43,10 @@ Beim Einrichten wird einmalig `http://<host>/parameter.json` abgefragt, um die V
 | Raumtemperatur | 17 (Modul 6) | 0,1 | °C | Raumgerät/Fernbedienung |
 | Soll-Raumtemperatur | 4 (Modul 6) | 0,1 | °C | Raumgerät/Fernbedienung |
 | Laststellung | 138 | 1 | % | |
-| Betriebsphase | 373 | 1 | – | Diagnose, Rohwert (das Gerät liefert keine Klartexte) |
+| Betriebsphase | 373 | 1 | – | Diagnose, Rohwert, Bedeutung siehe [Betriebsphasen](#betriebsphasen-beobachtet) |
 | Fehlercode | 1 | 1 | – | Diagnose, 0 = kein Fehler |
 | Störung | 1 | – | – | Binärsensor, an wenn Fehlercode ≠ 0 |
-| Flamme | 81 | – | – | Binärsensor, Zuordnung aus der Web-UI (`idT0051`) |
+| Flamme | 81 | – | – | Binärsensor, an bei laufendem Brenner (Zuordnung aus der Web-UI `idT0051`, im Betrieb verifiziert) |
 | Gasventil 1 / 2 | 1497 / 1498 | – | – | Binärsensoren (`idT05D9`/`idT05DA`) |
 | Schaltspiele Brenner | 3158 | 1000 | – | `total_increasing` |
 | Betriebsstunden Brenner | 3159 | 100 | h | `total_increasing` |
@@ -120,7 +120,7 @@ data:
 
 Ablauf und Schutzmaßnahmen:
 
-- Läuft im Hintergrund. Das Gerät liefert etwa 150 Samples/s, 12 Monate dauern grob eine Stunde
+- Läuft im Hintergrund. Das Gerät liefert etwa 150 bis 430 Samples/s, 12 Monate dauern ein bis eineinhalb Stunden
   (Blöcke zu 1000 Samples mit 2 s Pause). Das Ergebnis erscheint als Benachrichtigung.
   Für einen ersten Test eignet sich `months: 1`.
 - **Vorprüfung** (bei Fehler Abbruch ohne Schreibzugriff):
@@ -138,6 +138,31 @@ Ablauf und Schutzmaßnahmen:
 - Betriebsphase, Flamme und Gasventile sind **nicht** im Logger und werden nicht importiert.
   Möchte man die Betriebsphase mitloggen, muss am Gerät unter *Wärmeerzeuger → Prozesswerte*
   die Datalogger-Checkbox bei I10 gesetzt werden (ändert die Gerätekonfiguration).
+
+## Betriebsphasen (beobachtet)
+
+Das Gerät liefert für die Betriebsphase nur eine Zahl. Aus Aufzeichnungen im Minutenraster
+(Laststellung und Flamme als Gegenprobe) ergibt sich bisher:
+
+| Wert | Laststellung | Flamme | Vermutete Bedeutung |
+|---|---|---|---|
+| 0 | 0 % | aus | Bereitschaft |
+| 18 | > 0 % | an | Brennerstart (nur etwa eine Minute) |
+| 6 | 76 bis 100 % | an | Brenner läuft, Last moduliert |
+| 8 | 0 % | aus | kurz nach dem Abschalten, vermutlich Nachlauf |
+
+Die Zuordnung ist **keine offizielle Tabelle** des Herstellers. Weitere Phasen (z. B. Vorspülen,
+Zündung oder Fehlerzustände) können auftreten und sind im Minutenraster leicht zu übersehen.
+Das Abfrageintervall lässt sich in den Optionen der Integration bis auf 10 s verkürzen.
+
+## Hinweise für die Einrichtung in Home Assistant
+
+- **Wasserzähler in Litern im Energie-Dashboard:** Home Assistant rechnet den Preis einer
+  Wasserquelle immer pro **m³**, auch wenn der Zähler in Litern liefert. Als Preis also den
+  €/m³-Wert eintragen (nicht €/L), sonst sind die Kosten um den Faktor 1000 zu klein.
+- **Statistik nachträglich korrigieren:** Die stündlichen Zeilen eines Kosten-Sensors dürfen nicht
+  einfach skaliert werden, weil die laufende Berechnung auf der 5-Minuten-Kette aufsetzt. Die Summen
+  müssen um einen konstanten Betrag so verschoben werden, dass die letzte Stunde unverändert bleibt.
 
 ## Verhalten bei Gerätefehlern
 
@@ -165,7 +190,9 @@ python -m pytest tests
 
 - Negative Temperaturen sind nur per Unit-Test abgesichert, nicht gegen ein Gerät.
 - Betriebsphase und Fehlercode sind Rohzahlen: Das Webinterface des Geräts kennt dafür keine Klartexte.
-  Eine Zuordnung müsste aus der Weishaupt-Dokumentation ergänzt werden.
+  Für die Betriebsphase gibt es unten eine aus Beobachtung abgeleitete Zuordnung, für Fehlercodes
+  fehlt sie (bisher trat kein Fehler auf).
 - Nur lesender Zugriff, Schreiben von Parametern wird nicht unterstützt.
-- Der Historie-Import ist gegen das Gerät als Trockenlauf geprüft, aber noch nicht gegen die
-  Recorder-API einer laufenden Home-Assistant-Instanz (Version 2026.10).
+- Der Historie-Import wurde mit Home Assistant 2026.10 (PostgreSQL-Recorder) für 36 Monate ausgeführt
+  und geprüft, auch über drei Sommerzeit-Umstellungen. Andere Versionen sind nicht getestet; die
+  Statistik-Metadaten werden anhand der in der laufenden Version vorhandenen Felder zusammengestellt.
